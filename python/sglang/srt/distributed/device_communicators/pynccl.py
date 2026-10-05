@@ -165,7 +165,7 @@ class PyNcclCommunicator:
             ncclDataTypeEnum.from_torch(tensor.dtype),
             ncclRedOpTypeEnum.from_torch(op),
             self.comm,
-            cudaStream_t(stream.cuda_stream),
+            cudaStream_t(stream.native_handle),
         )
 
     def outplace_all_reduce(
@@ -192,7 +192,7 @@ class PyNcclCommunicator:
             ncclDataTypeEnum.from_torch(in_tensor.dtype),
             ncclRedOpTypeEnum.from_torch(op),
             self.comm,
-            cudaStream_t(stream.cuda_stream),
+            cudaStream_t(stream.native_handle),
         )
         return out_tensor
 
@@ -226,7 +226,7 @@ class PyNcclCommunicator:
                     ncclDataTypeEnum.from_torch(input_tensor.dtype),
                     root,
                     self.comm,
-                    cudaStream_t(stream.cuda_stream),
+                    cudaStream_t(stream.native_handle),
                 )
                 split_offset += split_size
             self.nccl.ncclGroupEnd()
@@ -237,7 +237,7 @@ class PyNcclCommunicator:
                 input_tensor.numel(),
                 ncclDataTypeEnum.from_torch(input_tensor.dtype),
                 self.comm,
-                cudaStream_t(stream.cuda_stream),
+                cudaStream_t(stream.native_handle),
             )
 
     def reduce_scatter(
@@ -272,7 +272,7 @@ class PyNcclCommunicator:
                     ncclRedOpTypeEnum.from_torch(op),
                     root,
                     self.comm,
-                    cudaStream_t(stream.cuda_stream),
+                    cudaStream_t(stream.native_handle),
                 )
                 split_offset += split_size
             self.nccl.ncclGroupEnd()
@@ -284,7 +284,7 @@ class PyNcclCommunicator:
                 ncclDataTypeEnum.from_torch(input_tensor.dtype),
                 ncclRedOpTypeEnum.from_torch(op),
                 self.comm,
-                cudaStream_t(stream.cuda_stream),
+                cudaStream_t(stream.native_handle),
             )
 
     def send(self, tensor: torch.Tensor, dst: int):
@@ -301,7 +301,7 @@ class PyNcclCommunicator:
             ncclDataTypeEnum.from_torch(tensor.dtype),
             dst,
             self.comm,
-            cudaStream_t(stream.cuda_stream),
+            cudaStream_t(stream.native_handle),
         )
 
     def recv(self, tensor: torch.Tensor, src: int):
@@ -318,7 +318,7 @@ class PyNcclCommunicator:
             ncclDataTypeEnum.from_torch(tensor.dtype),
             src,
             self.comm,
-            cudaStream_t(stream.cuda_stream),
+            cudaStream_t(stream.native_handle),
         )
 
     def all_to_all_single(
@@ -362,7 +362,7 @@ class PyNcclCommunicator:
                 dtype,
                 i,
                 self.comm,
-                cudaStream_t(stream.cuda_stream),
+                cudaStream_t(stream.native_handle),
             )
             recv_buf = output_tensor.narrow(0, i * chunk_size, chunk_size)
             self.nccl.ncclRecv(
@@ -371,7 +371,7 @@ class PyNcclCommunicator:
                 dtype,
                 i,
                 self.comm,
-                cudaStream_t(stream.cuda_stream),
+                cudaStream_t(stream.native_handle),
             )
         self.nccl.ncclGroupEnd()
 
@@ -398,7 +398,7 @@ class PyNcclCommunicator:
             ncclDataTypeEnum.from_torch(tensor.dtype),
             src,
             self.comm,
-            cudaStream_t(stream.cuda_stream),
+            cudaStream_t(stream.native_handle),
         )
 
     def register_comm_window_raw(self, ptr: int, size: int):
