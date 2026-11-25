@@ -9,6 +9,62 @@ from sglang.srt.entrypoints.openai.protocol import (
 )
 
 
+def build_llama_timings(meta_info: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Build a llama.cpp-compatible timings object from SGLang response
+    meta_info so downstream proxies (llama-swap) can read prefill/decode
+    rates and cached tokens from a standard field.
+    llama.cpp semantics:
+      prompt_ms            = prefill time (request start -> first token)
+      predicted_ms         = decode time  (first token -> finish)
+      prompt_per_second    = (prompt_n - cache_n) / prefill
+      predicted_per_second = completion_n / decode
+      cache_n              = cached prompt tokens
+    Prefers the scheduler engine-side prefill_latency and decode_latency
+    (both measured on the scheduler host, so they exclude API-queue wait
+    and tokenization; stable under load, accurate for streaming and
+    non-streaming). Falls back to e2e_latency - prefill, then
+    decode_throughput, when the engine fields are absent. Returns None
+    when e2e_latency is absent.
+    """
+    if not isinstance(meta_info, dict):
+        return None
+    e2e = meta_info.get("e2e_latency")
+    if e2e is None or e2e <= 0:
+        return None
+    prompt_n = int(meta_info.get("prompt_tokens", 0) or 0)
+    completion_n = int(meta_info.get("completion_tokens", 0) or 0)
+    cache_n = int(meta_info.get("cached_tokens", 0) or 0)
+    prefill = meta_info.get("prefill_latency")
+    decode = meta_info.get("decode_latency")
+    if prefill is None:
+        # No engine-side prefill: fall back to e2e + decode_throughput.
+        dec = meta_info.get("decode_throughput")
+        if dec is not None and dec > 0 and completion_n > 1:
+            decode = (completion_n - 1) / dec
+        prefill = max(0.0, e2e - (decode or 0.0))
+    else:
+        prefill = max(0.0, prefill)
+        if decode is None:
+            decode = max(0.0, e2e - prefill)
+        else:
+            decode = max(0.0, decode)
+    prompt_rate = -1.0
+    if prefill > 1e-6:
+        new = prompt_n - cache_n
+        prompt_rate = new / prefill if new > 0 else 0.0
+    pred_rate = -1.0
+    if decode > 1e-6 and completion_n > 0:
+        pred_rate = completion_n / decode
+    return {
+        "cache_n": cache_n,
+        "prompt_n": prompt_n,
+        "prompt_ms": prefill * 1000.0,
+        "prompt_per_second": prompt_rate,
+        "predicted_n": completion_n,
+        "predicted_ms": decode * 1000.0,
+        "predicted_per_second": pred_rate,
+    }
+
 @final
 class UsageProcessor:
     """Stateless helpers that turn raw token counts into a UsageInfo."""

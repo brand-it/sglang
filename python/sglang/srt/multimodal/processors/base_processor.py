@@ -1054,6 +1054,7 @@ class BaseMultimodalProcessor(MultimodalProcessorMixin, ABC):
         images, videos, audios = [], [], []
         new_text_parts = []
         has_precomputed_input = False
+        dropped_orphan_tokens = 0
         for text_part in text_parts:
             try:
                 if multimodal_tokens_pattern.match(text_part):
@@ -1099,20 +1100,12 @@ class BaseMultimodalProcessor(MultimodalProcessorMixin, ABC):
                     new_text_parts += [text_part]
 
             except StopIteration:
-                # when precomputed_input is presented with multi-images, StopIteration is expected
                 if has_precomputed_input:
                     new_text_parts += [text_part]
                     continue
-                raise _placeholder_mismatch_error(
-                    multimodal_tokens=multimodal_tokens,
-                    text_parts=text_parts,
-                    modality=multimodal_tokens.get_modality_of_token(text_part),
-                    data_by_modality={
-                        Modality.IMAGE: image_data,
-                        Modality.VIDEO: video_data,
-                        Modality.AUDIO: audio_data,
-                    },
-                ) from None
+                dropped_orphan_tokens += 1
+                logger.warning("Dropping orphan multimodal placeholder token with no matching data; continuing with the available media.")
+                continue
             except ValueError as e:
                 raise ValueError(
                     f"An exception occurred while loading multimodal data: {e}"
@@ -1121,6 +1114,12 @@ class BaseMultimodalProcessor(MultimodalProcessorMixin, ABC):
                 raise RuntimeError(
                     f"An exception occurred while loading multimodal data: {e}"
                 )
+        if dropped_orphan_tokens:
+            logger.warning(
+                "[legacy_load_mm_data] dropped %d orphan placeholder token(s) with no matching data; %d image(s) kept.",
+                dropped_orphan_tokens,
+                len(images),
+            )
         return BaseMultiModalProcessorOutput(
             images=images,
             audios=audios,

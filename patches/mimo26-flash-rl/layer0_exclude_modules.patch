@@ -1,0 +1,22 @@
+# One-line fix to the r0b0tlab/MiMo-V2.6-Flash-RL-NVFP4 checkpoint manifest.
+# File: hf_quant_config.json  (section: "quantization")
+# Remove "model.layers.0.mlp.*" from exclude_modules.
+#
+# Apply (from the checkpoint dir):
+#   python3 - <<PY
+#   import json
+#   D="hf_quant_config.json"; c=json.load(open(D)); q=c["quantization"]
+#   q["exclude_modules"]=[e for e in q["exclude_modules"] if e!="model.layers.0.mlp.*"]
+#   json.dump(c, open(D,"w"), indent=2)
+#   PY
+--- a/hf_quant_config.json
++++ b/hf_quant_config.json
+@@ "quantization".
+     "exclude_modules": [
+         "lm_head",
+         "model.embed_tokens",
+         "*.self_attn.*",
+-        "model.layers.0.mlp.*",
+         "*.mlp.gate",
+         "model.mtp*",
+         "visual*",

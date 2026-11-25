@@ -574,6 +574,10 @@ class APIServerReqTimeStats(ReqTimeStatsBase):
             meta_info.update(
                 self.get_ttft_breakdown(scheduler_time_stats, num_retractions)
             )
+            prefill_finished = scheduler_time_stats.prefill_finished_time
+            completion = scheduler_time_stats.completion_time
+            if prefill_finished is not None and completion is not None:
+                meta_info["decode_latency"] = max(0.0, completion - prefill_finished)
         return meta_info
 
     def convert_to_gen_ai_span_attrs(self):
@@ -653,6 +657,7 @@ class SchedulerOutputTimeStats(
     storage_staging_wait: Optional[float] = None
     forward_entry_time: Optional[float] = None
     prefill_finished_time: Optional[float] = None
+    completion_time: Optional[float] = None
     queue_time: float = 0.0
 
     def to_meta_info(self) -> Dict[str, float]:
@@ -743,6 +748,7 @@ class SchedulerReqTimeStats(ReqTimeStatsBase):
             queue_time=self.get_queueing_time(),
             forward_entry_time=_stamped_realtime(self.forward_entry_time),
             prefill_finished_time=_stamped_realtime(self.prefill_finished_time),
+            completion_time=_stamped_realtime(self.completion_time),
             storage_prefetch_wait=_finished_wait(
                 self.storage_prefetch_wait_s, self._storage_prefetch_wait
             ),

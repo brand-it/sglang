@@ -53,7 +53,7 @@ class ImageGenerationsRequest(BaseModel):
     model: Optional[str] = None
     n: Optional[int] = 1
     quality: Optional[str] = "auto"
-    response_format: Optional[str] = "url"  # url | b64_json
+    response_format: Optional[str] = "b64_json"  # url | b64_json (default b64 to match OpenAI-current; url path 404s through llama-swap)
     size: Optional[str] = "1024x1024"  # e.g., 1024x1024
     style: Optional[str] = "vivid"
     background: Optional[str] = "auto"  # transparent | opaque | auto

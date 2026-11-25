@@ -50,6 +50,9 @@ def _bad_request(message: str) -> HTTPException:
 
 
 def _parse_size_or_raise(size: str) -> tuple[int, int]:
+    # OpenAI "auto" size (GPT-image-1 default) has no dimensions; use a square.
+    if size is None or not str(size).strip() or str(size).lower() == "auto":
+        return 1024, 1024
     width, height = parse_size(size)
     if width is None or height is None or width <= 0 or height <= 0:
         raise _bad_request("size must be formatted as positive WIDTHxHEIGHT")

@@ -1466,12 +1466,15 @@ class ChatCompletionResponse(BaseModel):
     usage: UsageInfo
     metadata: Optional[Dict[str, Any]] = None
     sglext: Optional[SglExt] = None
+    timings: Optional[Dict[str, Any]] = None
 
     @model_serializer(mode="wrap")
     def _serialize(self, handler):
         data = handler(self)
         if self.sglext is None:
             data.pop("sglext", None)
+        if self.timings is None:
+            data.pop("timings", None)
         return data
 
 
@@ -1530,12 +1533,15 @@ class ChatCompletionStreamResponse(BaseModel):
     choices: List[ChatCompletionResponseStreamChoice]
     usage: Optional[UsageInfo] = None
     sglext: Optional[SglExt] = None
+    timings: Optional[Dict[str, Any]] = None
 
     @model_serializer(mode="wrap")
     def _serialize(self, handler):
         data = handler(self)
         if self.sglext is None:
             data.pop("sglext", None)
+        if self.timings is None:
+            data.pop("timings", None)
         return data
 
 

@@ -85,7 +85,10 @@ from sglang.srt.entrypoints.openai.protocol import (
 )
 from sglang.srt.entrypoints.openai.serving_base import OpenAIServingBase
 from sglang.srt.entrypoints.openai.sse_utils import build_sse_content
-from sglang.srt.entrypoints.openai.usage_processor import UsageProcessor
+from sglang.srt.entrypoints.openai.usage_processor import (
+    UsageProcessor,
+    build_llama_timings,
+)
 from sglang.srt.entrypoints.openai.utils import (
     cached_tokens_details_from_dict,
     process_cached_tokens_details_from_ret,
@@ -2799,6 +2802,7 @@ class OpenAIServingChat(OpenAIServingBase):
                     choices=[],  # Empty choices array as per OpenAI spec
                     model=request.model,
                     usage=usage,
+                    timings=build_llama_timings(content["meta_info"]),
                 )
                 yield f"data: {usage_chunk.model_dump_json(context=wire.serialization_context)}\n\n"
 
@@ -3105,6 +3109,7 @@ class OpenAIServingChat(OpenAIServingBase):
             usage=usage,
             metadata=build_endpoint_weight_version_metadata(ret[0]["meta_info"]),
             sglext=response_sglext,
+            timings=build_llama_timings(ret[0]["meta_info"]),
         )
 
     def _process_response_logprobs(self, ret_item: dict[str, Any]) -> ChoiceLogprobs:
