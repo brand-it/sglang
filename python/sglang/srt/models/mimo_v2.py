@@ -1222,27 +1222,32 @@ class MiMoV2Model(nn.Module):
             return hidden_states, hidden_states_before_norm
         return hidden_states, hidden_states_before_norm, aux_hidden_states.finalize()
 
-    # If this function is called, it should always initialize KV cache scale
-    # factors (or else raise an exception). Thus, handled exceptions should
-    # make sure to leave KV cache scale factors in a known good (dummy) state
     def load_kv_cache_scales(self, quantization_param_path: str) -> None:
-        attn_tp_rank, attn_tp_size = self._kv_cache_parallel_layout
-        for layer_idx, scaling_factor in kv_cache_scales_loader(
-            quantization_param_path,
-            attn_tp_rank,
-            attn_tp_size,
-            self.config.num_hidden_layers,
-            self.config.__class__.model_type,
-        ):
-            if not isinstance(self.layers[layer_idx], nn.Identity):
-                layer_self_attn = self.layers[layer_idx].self_attn
-            if hasattr(layer_self_attn.attn, "k_scale"):
-                layer_self_attn.attn.k_scale = scaling_factor
-                layer_self_attn.attn.v_scale = scaling_factor
-            else:
+        # MiMo-V2.6 supplies separate K and V scales in a nonstandard JSON schema.
+        import json
+
+        with open(quantization_param_path) as file:
+            raw = json.load(file)
+        tp_rank, _ = self._kv_cache_parallel_layout
+        tp_scales = raw["kv_cache"]["scaling_factor"][str(tp_rank)]
+        for layer_idx_str, layer_scales in tp_scales.items():
+            layer_idx = int(layer_idx_str)
+            if layer_idx >= len(self.layers):
+                continue
+            layer = self.layers[layer_idx]
+            if isinstance(layer, nn.Identity):
+                continue
+            attn = layer.self_attn.attn
+            if not hasattr(attn, "k_scale"):
                 raise RuntimeError(
                     "Self attention has no KV cache scaling factor attribute!"
                 )
+            if isinstance(layer_scales, dict):
+                attn.k_scale = layer_scales["k_scale"]
+                attn.v_scale = layer_scales["v_scale"]
+            else:
+                attn.k_scale = layer_scales
+                attn.v_scale = layer_scales
 
 
 class MiMoV2ForCausalLM(nn.Module, AudioEncoderMixin):
