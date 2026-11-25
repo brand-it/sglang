@@ -357,6 +357,7 @@ class ServerArgs:
     LANGUAGE_MODEL_ONLY_ARCHITECTURES = (
         "DeepseekV4ForCausalLM",
         "MiMoV2ForCausalLM",
+        "MiMoV2FlashForCausalLM",
         "MuseGlimmerForConditionalGeneration",
         "Cosmos3ForConditionalGeneration",
         "Cosmos3EdgeForConditionalGeneration",

@@ -1248,6 +1248,8 @@ class MiMoV2Model(nn.Module):
             else:
                 attn.k_scale = layer_scales
                 attn.v_scale = layer_scales
+            attn.k_scale_float = attn.k_scale
+            attn.v_scale_float = attn.v_scale
 
 
 class MiMoV2ForCausalLM(nn.Module, AudioEncoderMixin):

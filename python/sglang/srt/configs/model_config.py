@@ -832,6 +832,13 @@ class ModelConfig:
         )
 
         # Set enable_multimodal
+        if (
+            language_model_only
+            and enable_multimodal is None
+            and self.hf_config.architectures[0] in MIMO_V2_MULTIMODAL_ARCHS
+        ):
+            enable_multimodal = False
+            logger.info("Multimodal input is disabled for this MiMoV2 checkpoint.")
         if enable_multimodal is None:
             mm_disabled_models = [
                 "Gemma3ForConditionalGeneration",
