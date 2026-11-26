@@ -1,4 +1,4 @@
-"""Correct MiMo-V2.6-Flash-RL QKV quantization metadata from stdin to stdout."""
+"""Correct MiMo-V2.6-Flash-RL quantization metadata from stdin to stdout."""
 
 import json
 import sys
@@ -18,6 +18,15 @@ elif "*.self_attn.o_proj" not in excluded:
 layers = quantization["quantized_layers"]
 for layer_id in range(48):
     name = f"model.layers.{layer_id}.self_attn.qkv_proj"
+    entry = layers.setdefault(name, {"quant_algo": "FP8_PB_WO"})
+    if entry["quant_algo"] != "FP8_PB_WO":
+        raise ValueError(f"Unexpected quantization for {name}: {entry}")
+
+for name in (
+    "model.decoder.self_attn.qkv_proj",
+    "model.decoder.mlp.gate_up_proj",
+    "model.decoder.mlp.down_proj",
+):
     entry = layers.setdefault(name, {"quant_algo": "FP8_PB_WO"})
     if entry["quant_algo"] != "FP8_PB_WO":
         raise ValueError(f"Unexpected quantization for {name}: {entry}")

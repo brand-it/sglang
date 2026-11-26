@@ -777,7 +777,6 @@ class ModelRunner:
             lora_enabled=self.lora_manager is not None,
         )
         self.maybe_enable_batch_invariant_mode()
-        self.configure_kv_cache_dtype()
         # after every post-load change to the model, before the KV cache is sized
         install_megakernel(
             model=self.model,
@@ -1442,13 +1441,11 @@ class ModelRunner:
             pyt_hooks = PytHooks()
             pyt_hooks.register_hooks(self.model, module_prefix="model")
 
-        # Same leaf `configure_kv_cache_dtype` reads: the bag, not the startup
-        # record, so the FP8 gate and the pool cannot disagree after an
-        # override. (The runner's own stamp is not set yet -- load_model runs
-        # before configure_kv_cache_dtype.)
+        self.dtype = self.model_config.dtype
+        self.configure_kv_cache_dtype()
         load_kv_cache_scales(
             model=self.model,
-            kv_cache_dtype=get_model().kv_cache_dtype,
+            kv_cache_dtype=self.kv_cache_dtype_str,
             device=self.device,
         )
 
@@ -1460,8 +1457,6 @@ class ModelRunner:
             hasattr(self.model, "is_prefill_aware_swa")
             and self.model.is_prefill_aware_swa()
         )
-
-        self.dtype = self.model_config.dtype
 
         after_avail_memory = get_available_gpu_memory(self.device, self.gpu_id)
         self.weight_load_mem_usage = before_avail_memory - after_avail_memory

@@ -188,13 +188,15 @@ def load_mimo_v2_qkv_proj_weight(
 
 
 def _get_ckpt_qkv_shard_sizes(config, layer_name, ckpt_tp):
-    m = re.search(r"layers\.(\d+)\.", layer_name)
-    if m is None:
-        return None
-    layer_id = int(m.group(1))
-
-    pattern = getattr(config, "hybrid_layer_pattern", None)
-    is_swa = pattern is not None and pattern[layer_id] == 1
+    if ".mtp_block." in layer_name:
+        is_swa = True
+    else:
+        match = re.search(r"layers\.(\d+)\.", layer_name)
+        if match is None:
+            return None
+        layer_id = int(match.group(1))
+        pattern = getattr(config, "hybrid_layer_pattern", None)
+        is_swa = pattern is not None and pattern[layer_id] == 1
 
     if is_swa:
         nh = config.swa_num_attention_heads

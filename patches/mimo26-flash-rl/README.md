@@ -58,3 +58,8 @@ Replace the model's config with the corrected file, sync it to the worker,
 and restart the model. The fused TP4-to-TP2 loader in this branch dequantizes,
 reorders, and requantizes the QKV weights and scales. With the corrected config,
 the model returned `4` for `2 + 2` and a coherent explanation of the blue sky.
+
+The same script adds block-FP8 metadata for the EAGLE MTP draft projections.
+The draft checkpoint contains FP8 weights and scales for these layers. Without
+the entries, the draft loader cannot load the scales. The draft's fused QKV
+loader also reorders the TP4 weights and scales for TP2.

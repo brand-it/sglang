@@ -286,6 +286,56 @@ class TestMiMoFusedQkvLoaderLayout(CustomTestCase):
     def test_main_and_mtp_callers_unwrap_the_projection(self):
         self.check_main_and_mtp_callers(wrapped=True)
 
+    def test_mtp_caller_reorders_deferred_fp8_scales(self):
+        for dp in (1, 2):
+            for rank in range(4):
+                reset_context()
+                publish(
+                    ServerArgs(
+                        model_path="dummy", device="cuda", tp_size=4, attn_dp_size=dp
+                    ),
+                    role="test",
+                    ranks=SpawnRanks(world_rank=rank),
+                )
+                reference, reference_projection = build_projection(fp8=True)
+                expected_weight, expected_scale = load_deferred(
+                    reference, reference_projection
+                )
+
+                root, projection = build_projection(fp8=True)
+                model = MiMoV2MTP.__new__(MiMoV2MTP)
+                torch.nn.Module.__init__(model)
+                model.config = SimpleNamespace(
+                    attention_projection_layout="fused_qkv",
+                    num_key_value_heads=8,
+                    swa_num_attention_heads=64,
+                    swa_num_key_value_heads=32,
+                    swa_head_dim=32,
+                    swa_v_head_dim=16,
+                    tie_word_embeddings=False,
+                )
+                model.model = root.model
+                model.model.mtp_block = model.model.layers[0]
+                del model.model.layers
+                rows = projection.weight.shape[0] * rank_size(projection)[1]
+                weight = values((rows, 128), torch.float8_e4m3fn)
+                scale = ((torch.arange(32, device="cuda") % 3 + 1).float() / 128).reshape(
+                    32, 1
+                )
+                prefix = "model.mtp.layers.0.self_attn.qkv_proj."
+                model.load_weights(
+                    [(prefix + "weight_scale_inv", scale), (prefix + "weight", weight)]
+                )
+                torch.testing.assert_close(
+                    projection.weight.view(torch.uint8),
+                    expected_weight.view(torch.uint8),
+                    rtol=0,
+                    atol=0,
+                )
+                torch.testing.assert_close(
+                    projection.weight_scale_inv, expected_scale, rtol=0, atol=0
+                )
+
     def test_rank_change_without_changing_partition_width(self):
         publish(
             ServerArgs(model_path="dummy", device="cuda", tp_size=4, attn_dp_size=2),
